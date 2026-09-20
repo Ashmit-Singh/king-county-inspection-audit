@@ -86,29 +86,27 @@ All figures and CSV summaries will be saved directly to `outputs/`.
 ## 5. Known Limitations & Methodological Notes
 
 1. **Complete-Case Sample Reduction (Dropped Inspection Breakdown)**:
-   - Correlation matrices (Analysis 3.1) require complete cases across the numeric variables, evaluating **59,893 of 71,649 inspections** (11,756 dropped).
-   - An exact audit reveals that the **11,756 dropped inspections** stem from:
-     - **10,685 inspections (90.9%)** are administrative non-ratings (`Grade == "Not Rated"`), occurring when a facility is exempt, newly permitted, or has insufficient routine inspection history to compute a rolling window grade.
-     - **501 inspections** lack `Risk Category` (441 with a rated Grade, 60 also unrated).
-     - **378 inspections** have Grade `Needs To Improve` (which did not match the original script's `'NEEDS IMPROVEMENT'` dictionary key and therefore mapped to NaN).
+   - Correlation matrices (Analysis 3.1) require complete cases across the numeric variables, evaluating **60,271 of 71,649 inspections** (11,378 dropped).
+   - An exact audit reveals that the **11,378 dropped inspections** stem from:
+     - **10,685 inspections (93.9%)** are administrative non-ratings (`Grade == "Not Rated"`), occurring when a facility is exempt, newly permitted, or has insufficient routine inspection history to compute a rolling window grade.
+     - **501 inspections** lack `Risk Category` (441 with an assigned Grade, 60 also unrated).
      - **252 inspections** are marked `Rating Not Available`.
-     - *Total dropped*: 11,255 (Grade only) + 441 (Risk only) + 60 (both) = **11,756**.
+     - *Total dropped*: 10,877 (Grade only) + 441 (Risk only) + 60 (both) = **11,378**.
 2. **Rare-Event Sparsity in Closure Regression**:
    - The logistic regression of business closure on inspection score rests on only **28 total closure events** across 71,649 inspections (0.039%).
    - High-score inspections (>80) are extremely sparse. While higher scores increase the log-odds of closure (β = 0.0564, p = 1.07 × 10⁻⁴³), standard-error asymptotics are sensitive to such rare events, and the model must not be extrapolated beyond the observed score range.
 3. **Establishment-Level Grouping (Unclustered by `Business_ID`)**:
    - The current inspection-level model aggregates to `Inspection_Serial_Num`, but does not yet apply multi-level clustering or longitudinal random effects by `Business_ID` across repeat inspections of the same venue over time.
-4. **Encoding Definitions vs. Official King County Standards**:
+4. **Encoding Definitions & King County Standards**:
    - `Result_enc`: Alphabetical label encoding of `Inspection Result`:
      - `Complete` &rarr; 0
      - `Satisfactory` &rarr; 1
      - `Unsatisfactory` &rarr; 2
-   - `Grade_ord`: King County's official Food Safety Rating System uses 4 window sign categories based on average red violation points across the previous four routine inspections:
-     1. **Needs to Improve** (closed within the past year or multiple return inspections required)
-     2. **Okay** (many red critical violations)
-     3. **Good** (some red critical violations)
-     4. **Excellent** (zero or very few red critical violations)
-   - *Note on Heuristic Script Mapping*: The analysis script used the mapping `{"NEEDS IMPROVEMENT": 1, "ADEQUATE": 2, "OKAY": 2, "GOOD": 3, "EXCELLENT": 4}`. This mapping introduced `"ADEQUATE"` (which does not exist in King County's schema) and missed the 378 `"Needs To Improve"` records due to the string difference between `"IMPROVEMENT"` and `"TO IMPROVE"`.
+   - `Grade_ord`: Matches King County's official 4-tier Food Safety Rating System window signs via case-insensitive, stripped mapping:
+     - `{"needs to improve": 1, "okay": 2, "good": 3, "excellent": 4}`
+     - All 378 inspections with `"Needs To Improve"` are properly mapped to tier 1.
+     - Legitimately unrated designations (`"Not Rated"` and `"Rating Not Available"`) are preserved as missing (NaN).
+     - A strict runtime assertion enforces that no unexpected values outside these six categories exist in the dataset.
 
 ---
 

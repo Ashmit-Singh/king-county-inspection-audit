@@ -163,9 +163,18 @@ df["is_red"]  = (df["Violation_Type"].str.upper() == "RED").astype(int)
 df["is_blue"] = (df["Violation_Type"].str.upper() == "BLUE").astype(int)
 
 # Encode Grade ordinally
-grade_order = {"NEEDS IMPROVEMENT": 1, "ADEQUATE": 2, "OKAY": 2, 
-               "GOOD": 3, "EXCELLENT": 4}
-df["Grade_ord"] = df["Grade"].str.upper().str.strip().map(grade_order)
+valid_grades = {"needs to improve", "okay", "good", "excellent", "not rated", "rating not available"}
+observed_grades = set(df["Grade"].dropna().str.lower().str.strip())
+unexpected_grades = observed_grades - valid_grades
+assert not unexpected_grades, f"Unexpected Grade values encountered: {unexpected_grades}"
+
+grade_order = {
+    "needs to improve": 1,
+    "okay": 2,
+    "good": 3,
+    "excellent": 4
+}
+df["Grade_ord"] = df["Grade"].str.lower().str.strip().map(grade_order)
 
 # Encode Inspection Result
 result_vals = sorted(df["Inspection_Result"].dropna().unique())
@@ -206,7 +215,7 @@ df_insp["Risk_Category"]    = pd.to_numeric(df_insp["Risk_Category"], errors="co
 df_insp["Closed"] = df_insp["Inspection_Closed_Business"].map(
     lambda x: 1 if str(x).strip().upper() == "YES" else 0
 )
-df_insp["Grade_ord"]  = df_insp["Grade"].str.upper().str.strip().map(grade_order)
+df_insp["Grade_ord"]  = df_insp["Grade"].str.lower().str.strip().map(grade_order)
 df_insp["Result_enc"] = df_insp["Inspection_Result"].map(result_map)
 
 print(f"(b) Inspection-level   : {len(df_insp):,} rows")
