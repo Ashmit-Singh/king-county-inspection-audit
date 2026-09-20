@@ -1,0 +1,25 @@
+# Data files
+data/*.csv
+data/*.zip
+data/*.tar.gz
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+ENV/
+
+# Jupyter / Notebooks
+.ipynb_checkpoints/
+
+# Environment and secrets
+.env
+.env.*
+*.log
+
+# Operating System
+.DS_Store
+Thumbs.db
