@@ -31,13 +31,13 @@ Analyzing this dataset at the uncorrected **row level** results in severe **pseu
 
 | Metric / Analysis | Row-Level Analysis (Uncorrected) | Inspection-Level Analysis (Corrected) | Inferential Impact |
 | :--- | :---: | :---: | :--- |
-| **Total Observations ($N$)** | $106,257$ | $71,649$ | Pseudoreplication deflates standard errors by $48\%$. |
-| **Recorded Business Closures** | $151$ | **$28$** | Closures are extreme rare events ($0.039\%$), not $0.14\%$. |
-| **Risk 3 Score Median (IQR)** | $10.0$ ($\text{IQR} = 25.0$) | **$0.0$** ($\text{IQR} = 10.0$) | Across all risk tiers (1, 2, and 3), median score is $0.0$. |
-| **Routine vs Return: Welch $t$-test** | $t = 2.7481$, **$p = 0.0060$** | $t = 1.4361$, **$p = 0.1511$** | **Spurious finding corrected**: Mean scores do not differ significantly. |
-| **Routine vs Return: Mann-Whitney $U$** | $U = 1.55 \times 10^8$, $p = 1.05 \times 10^{-24}$ | $U = 8.08 \times 10^7$, $p = 2.37 \times 10^{-34}$ | Non-parametric rank shift ($r_{\text{rb}} = -0.14$). |
-| **Score vs Summed Violation Points** | Pearson $r = 0.5282$ | Pearson **$r = 0.9999$** | **Circularity**: Exact equality in **$71,622$ of $71,649$ ($99.96\%$)**. |
-| **has_red $\times$ Result Association** | N/A (row-level count plot) | $\chi^2 = 70,631.34$, **Cramér's $V = 0.9929$** | Red violations deterministically predict Unsatisfactory status ($99.4\%$). |
+| **Total Observations (N)** | 106,257 | 71,649 | Row-level N is 48% larger than the number of independent inspections. |
+| **Recorded Business Closures** | 151 | **28** | Closures are extreme rare events (0.039%), not 0.14%. |
+| **Risk 3 Score Median (IQR)** | 10.0 (IQR = 25.0) | **0.0** (IQR = 10.0) | Across all risk tiers (1, 2, and 3), median score is 0.0. |
+| **Routine vs Return: Welch t-test** | t = 2.7481, **p = 0.0060** | t = 1.4361, **p = 0.1511** | **Spurious finding corrected**: Mean scores do not differ significantly. |
+| **Routine vs Return: Mann-Whitney U** | U = 1.55 × 10⁸, p = 1.05 × 10⁻²⁴ | U = 8.08 × 10⁷, p = 2.37 × 10⁻³⁴ | Non-parametric rank shift (rank-biserial r_rb = -0.14). |
+| **Score vs Summed Violation Points** | Pearson r = 0.5282 | Pearson **r = 0.9999** | **Circularity**: Exact equality in **71,622 of 71,649 (99.96%)**. |
+| **has_red × Result Association** | N/A (row-level count plot) | χ² = 70,631.34, **Cramér's V = 0.9929** | almost always (99.4%). |
 
 ---
 
@@ -51,8 +51,8 @@ Analyzing this dataset at the uncorrected **row level** results in severe **pseu
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/Ashmit-Singh/ZKML.git
-   cd ZKML
+   git clone https://github.com/Ashmit-Singh/king-county-inspection-audit.git
+   cd king-county-inspection-audit
    ```
 
 2. **Create and activate a virtual environment**:
@@ -85,24 +85,30 @@ All figures and CSV summaries will be saved directly to `outputs/`.
 
 ## 5. Known Limitations & Methodological Notes
 
-1. **Complete-Case Analysis for Correlations**:
-   - Correlation matrices (Analysis 3.1) are computed on complete cases across the numeric feature subset.
-   - For the inspection-level correlation, this restricts the sample to **$59,893$ of $71,649$ inspections** ($83.6\%$), primarily because $11,756$ inspections had missing values in `Risk Category` or `Grade`.
+1. **Complete-Case Sample Reduction (Dropped Inspection Breakdown)**:
+   - Correlation matrices (Analysis 3.1) require complete cases across the numeric variables, evaluating **59,893 of 71,649 inspections** (11,756 dropped).
+   - An exact audit reveals that the **11,756 dropped inspections** stem from:
+     - **10,685 inspections (90.9%)** are administrative non-ratings (`Grade == "Not Rated"`), occurring when a facility is exempt, newly permitted, or has insufficient routine inspection history to compute a rolling window grade.
+     - **501 inspections** lack `Risk Category` (441 with a rated Grade, 60 also unrated).
+     - **378 inspections** have Grade `Needs To Improve` (which did not match the original script's `'NEEDS IMPROVEMENT'` dictionary key and therefore mapped to NaN).
+     - **252 inspections** are marked `Rating Not Available`.
+     - *Total dropped*: 11,255 (Grade only) + 441 (Risk only) + 60 (both) = **11,756**.
 2. **Rare-Event Sparsity in Closure Regression**:
-   - The logistic regression of business closure on score is based on only **$28$ total closure events** across $71,649$ inspections.
-   - Observations with high inspection scores ($>80$) are extremely sparse. While higher scores are positively associated with closure ($\beta = 0.0564, p = 1.07 \times 10^{-43}$), standard asymptotic properties can be sensitive to rare events, and the model should not be extrapolated outside the observed domain.
+   - The logistic regression of business closure on inspection score rests on only **28 total closure events** across 71,649 inspections (0.039%).
+   - High-score inspections (>80) are extremely sparse. While higher scores increase the log-odds of closure (β = 0.0564, p = 1.07 × 10⁻⁴³), standard-error asymptotics are sensitive to such rare events, and the model must not be extrapolated beyond the observed score range.
 3. **Establishment-Level Grouping (Unclustered by `Business_ID`)**:
-   - The current inspection-level model aggregates to `Inspection_Serial_Num`, but does not yet apply multi-level clustering or random effects by `Business_ID` across longitudinal inspections of the same venue over time.
-4. **Encoding Definitions**:
+   - The current inspection-level model aggregates to `Inspection_Serial_Num`, but does not yet apply multi-level clustering or longitudinal random effects by `Business_ID` across repeat inspections of the same venue over time.
+4. **Encoding Definitions vs. Official King County Standards**:
    - `Result_enc`: Alphabetical label encoding of `Inspection Result`:
-     - `Complete` &rarr; $0$
-     - `Satisfactory` &rarr; $1$
-     - `Unsatisfactory` &rarr; $2$
-   - `Grade_ord`: Ordinal mapping reflecting King County's food safety tier system:
-     - `NEEDS IMPROVEMENT` &rarr; $1$
-     - `ADEQUATE` / `OKAY` &rarr; $2$
-     - `GOOD` &rarr; $3$
-     - `EXCELLENT` &rarr; $4$
+     - `Complete` &rarr; 0
+     - `Satisfactory` &rarr; 1
+     - `Unsatisfactory` &rarr; 2
+   - `Grade_ord`: King County's official Food Safety Rating System uses 4 window sign categories based on average red violation points across the previous four routine inspections:
+     1. **Needs to Improve** (closed within the past year or multiple return inspections required)
+     2. **Okay** (many red critical violations)
+     3. **Good** (some red critical violations)
+     4. **Excellent** (zero or very few red critical violations)
+   - *Note on Heuristic Script Mapping*: The analysis script used the mapping `{"NEEDS IMPROVEMENT": 1, "ADEQUATE": 2, "OKAY": 2, "GOOD": 3, "EXCELLENT": 4}`. This mapping introduced `"ADEQUATE"` (which does not exist in King County's schema) and missed the 378 `"Needs To Improve"` records due to the string difference between `"IMPROVEMENT"` and `"TO IMPROVE"`.
 
 ---
 
